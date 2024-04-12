@@ -1,0 +1,114 @@
+<html lang="en"><head>
+    <meta charset="UTF-8">
+    <title>Roughness Map Generator</title>
+    <script async="" src="https://docs.opencv.org/3.4/opencv.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .container { display: flex; }
+        .slider-container { margin: 10px 0; }
+        canvas { margin-top: 10px; margin-right: 20px; border: 1px solid #ddd; }
+    </style>
+<style type="text/css" id="operaUserStyle"></style></head>
+<body>
+    <h1>Roughness Map Generator</h1>
+    <input type="file" id="imageUploader" accept="image/*">
+    <div class="slider-container">
+        <label for="intensitySlider">Intensity (Sobel Threshold):</label>
+        <input type="range" id="intensitySlider" min="0" max="720" value="">
+    </div>
+
+
+    <!-- this part is for a redundant slider i ended up removing for opacity-->
+    <div class="slider-container">
+        <label for="opacitySlider"></label> 
+        <input type="hidden" id="opacitySlider">
+    </div>
+
+
+    <div class="slider-container">
+        <label for="effectSlider">Blur/Sharpen:</label>
+        <input type="range" id="effectSlider" min="-20" max="0" value="0">
+    </div>
+    <div class="container">
+        <canvas id="canvasInput" width="602" height="380"></canvas>
+        <canvas id="canvasOutput" width="602" height="380"></canvas>
+    </div>
+
+    <script>
+        let imgElement = document.createElement('img');
+        let src;
+        const canvasInput = document.getElementById('canvasInput');
+        const canvasOutput = document.getElementById('canvasOutput');
+        const ctxInput = canvasInput.getContext('2d');
+        const ctxOutput = canvasOutput.getContext('2d');
+
+        document.getElementById('imageUploader').addEventListener('change', function(e) {
+            imgElement.src = URL.createObjectURL(e.target.files[0]);
+            imgElement.onload = function() {
+                if (!cv) return;
+                canvasInput.width = imgElement.width;
+                canvasInput.height = imgElement.height;
+                ctxInput.drawImage(imgElement, 0, 0, imgElement.width, imgElement.height);
+                src = cv.imread(imgElement);
+                processImage();
+            }
+        });
+
+        document.getElementById('intensitySlider').addEventListener('input', processImage);
+        document.getElementById('opacitySlider').addEventListener('input', processImage);
+        document.getElementById('effectSlider').addEventListener('input', processImage);
+
+        function processImage() {
+            if (!src) return;
+            let dst = new cv.Mat();
+            let temp = src.clone();
+
+            // Pre-process: Apply blur or sharpen
+            applyBlurSharpen(temp);
+
+            // Convert to grayscale
+            cv.cvtColor(temp, temp, cv.COLOR_RGBA2GRAY, 0);
+
+            // Apply Sobel filter with dynamic thresholding
+            applySobelFilter(temp, dst);
+
+            // Apply a blue overlay based on intensity and opacity
+            applyBlueOverlay(dst);
+
+            cv.imshow('canvasOutput', dst);
+            temp.delete(); dst.delete();
+        }
+
+        function applyBlurSharpen(image) {
+            let effectValue = parseInt(document.getElementById('effectSlider').value, 10);
+            if (effectValue < 0) {
+                cv.GaussianBlur(image, image, new cv.Size(5, 5), Math.abs(effectValue));
+            } else if (effectValue > 0) {
+                let ksize = effectValue * 2 + 1;
+                cv.GaussianBlur(image, image, new cv.Size(ksize, ksize), 0);
+                cv.addWeighted(image, 1.5, image, -0.5, 0, image);
+            }
+        }
+
+        function applySobelFilter(image, output) {
+            let intensity = parseInt(document.getElementById('intensitySlider').value, 10);
+            cv.Sobel(image, output, cv.CV_16S, 1, 0, 3, 1, 0, cv.BORDER_DEFAULT);
+            cv.convertScaleAbs(output, output, intensity / 255);
+        }
+
+        function applyBlueOverlay(image) {
+            let opacity = parseFloat(document.getElementById('opacitySlider').value);
+            cv.cvtColor(image, image, cv.COLOR_GRAY2RGBA);
+            let imageData = ctxOutput.getImageData(0, 0, canvasOutput.width, canvasOutput.height);
+            let data = imageData.data;
+            for (let i = 0; i < data.length; i += 4) {
+                data[i] = data[i] * (1 - opacity) + 0 * opacity; // R
+                data[i + 1] = data[i + 1] * (1 - opacity) + 0 * opacity; // G
+                data[i + 2] = 255 * opacity; // Blue channel maxed for depth effect
+            }
+            ctxOutput.putImageData(imageData, 0, 0);
+        }
+    </script>
+
+
+</body></html>

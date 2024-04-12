@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Application</title>
+  <style>
+    .button-container {
+      position: fixed;
+      right: 50%;
+      top: 50%;
+      transform: translateY(-50%);
+    }
+    
+    .button {
+      margin-bottom: 10px;
+      padding: 10px 20px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <div class="button-container">
+    <button class="button" data-href="C:\Users\herre\OneDrive\Documents\Unreal Projects\AsterMapper\Dependant Modules\DisplacementMapper.html">Displacement Mapper</button>
+    <button class="button" data-href="C:\Users\herre\OneDrive\Documents\Unreal Projects\AsterMapper\Dependant Modules\NormalMapper.html">Normal Mapper</button>
+    <button class="button" data-href="C:\Users\herre\OneDrive\Documents\Unreal Projects\AsterMapper\Dependant Modules\RoughnessMapper.html">Roughness Mapper</button>
+    <button class="button" data-href="C:\Users\herre\OneDrive\Documents\Unreal Projects\AsterMapper\Dependant Modules\VertexEdgeSeperation.html">Vertex Edge Extractor</button>
+  </div>
+  
+  <script>
+    const buttons = document.querySelectorAll('.button');
+    
+    buttons.forEach(button => {
+      button.addEventListener('click', () => {
+        const href = button.dataset.href;
+        window.location.href = href;  // Use full URL directly
+      });
+    });
+  </script>
+</body>
+</html>

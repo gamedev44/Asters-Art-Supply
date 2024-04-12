@@ -1,0 +1,89 @@
+
+<html lang="en"><head>
+    <meta charset="UTF-8">
+    <title>Normal Map Generator</title>
+    <script async="" src="https://docs.opencv.org/3.4/opencv.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .slider-container { margin: 10px 0; }
+        canvas { border: 1px solid #ddd; margin-top: 10px; }
+    </style>
+<style type="text/css" id="operaUserStyle"></style></head>
+<body>
+    <h1>Normal Map Generator</h1>
+    <input type="file" id="imageUploader" accept="image/*">
+    <div class="slider-container">
+        <label for="intensitySlider"></label>
+        <input type="hidden" id="intensitySlider">
+    </div>
+    <div class="slider-container">
+        <label for="opacitySlider">Intensity</label>
+        <input type="range" id="opacitySlider" min="-10" max="10" value="0" step="0.025">
+    </div>
+    <div class="slider-container">
+        <label for="effectSlider"></label>
+        <input type="hidden" id="effectSlider">
+    </div>
+    <canvas id="canvasOutput" width="500" height="250"></canvas>
+
+    <script>
+        let imgElement = document.createElement('img');
+        let src, dst;
+        const canvasOutput = document.getElementById('canvasOutput');
+        const ctx = canvasOutput.getContext('2d');
+
+        document.getElementById('imageUploader').addEventListener('change', function(e) {
+            imgElement.src = URL.createObjectURL(e.target.files[0]);
+            imgElement.onload = function() {
+                processImage();
+            }
+        });
+
+        document.getElementById('intensitySlider').addEventListener('input', processImage);
+        document.getElementById('opacitySlider').addEventListener('input', processImage);
+        document.getElementById('effectSlider').addEventListener('input', processImage);
+
+        function processImage() {
+            if (!cv || !imgElement.src) return;
+            if (!src) src = cv.imread(imgElement);
+            dst = new cv.Mat();
+
+            canvasOutput.width = imgElement.width;
+            canvasOutput.height = imgElement.height;
+
+            // Apply Sobel filter
+            let srcGray = new cv.Mat();
+            cv.cvtColor(src, srcGray, cv.COLOR_RGBA2GRAY, 0);
+            let grad = new cv.Mat();
+            cv.Sobel(srcGray, grad, cv.CV_16S, 1, 0);
+            cv.convertScaleAbs(grad, grad);
+
+            // Simulate normal map by applying a blue overlay based on intensity
+            let opacity = parseFloat(document.getElementById('opacitySlider').value);
+            ctx.drawImage(imgElement, 0, 0, imgElement.width, imgElement.height);
+            let imageData = ctx.getImageData(0, 0, canvasOutput.width, canvasOutput.height);
+            let data = imageData.data;
+            for (let i = 0; i < data.length; i += 4) {
+                // Apply blue tint
+                data[i] = data[i] * (1-opacity) + grad.data[i / 4] * opacity; // R
+                data[i + 1] = data[i + 1] * (1-opacity) + grad.data[i / 4] * opacity; // G
+                data[i + 2] = 255 * opacity; // Blue channel maxed for depth effect
+            }
+            ctx.putImageData(imageData, 0, 0);
+
+            // Apply blur or sharpen based on the effect slider
+            let effectValue = parseInt(document.getElementById('effectSlider').value, 10);
+            if (effectValue < 0) {
+                cv.GaussianBlur(src, dst, new cv.Size(5, 5), Math.abs(effectValue));
+            } else if (effectValue > 0) {
+                let ksize = effectValue * 2 + 1;
+                cv.GaussianBlur(src, dst, new cv.Size(ksize, ksize), 0);
+                cv.addWeighted(src, 1.5, dst, -0.5, 0, dst);
+            }
+            cv.imshow('canvasOutput', dst);
+
+            srcGray.delete(); grad.delete();
+        }
+    </script>
+
+</body></html>
